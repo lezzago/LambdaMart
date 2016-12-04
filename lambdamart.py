@@ -25,9 +25,11 @@ class LambdaMART:
 		for k in self.number_of_trees:
 			for i in xrange(len(training_data)):
 
+	def predict(self, data):
+
 
 def main():
-	
+
 
 if __name__ == '__main__':
 	main()
