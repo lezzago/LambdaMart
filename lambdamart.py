@@ -46,10 +46,7 @@ def compute_lambda(true_scores, predicted_scores):
 	for i in xrange(num_docs):
 		for j in xrange(num_docs):
 			if true_scores[i] > true_scores[j]:
-				if i in temp:
-					temp.remove(i)
-				if j in temp:
-					temp.remove(j)
+
 				z_ndcg = delta_ndcg(true_scores, i, j)
 				rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
 				rho_complement = 1.0 - rho
@@ -57,9 +54,9 @@ def compute_lambda(true_scores, predicted_scores):
 				lambdas[i] += lambda_val
 				lambdas[j] -= lambda_val
 
-				w_val = rho * rho * z_ndcg
+				w_val = rho * rho_complement * z_ndcg
 				w[i] += w_val
-				w[j] -= w_val
+				w[j] += w_val
 
 	return lambdas[rev_indexes], w[rev_indexes]
 
