@@ -41,6 +41,7 @@ def compute_lambda(true_scores, predicted_scores):
 	predicted_scores = predicted_scores[sorted_indexes]
 
 	lambdas = np.zeros(num_docs)
+	w = np.zeros(num_docs)
 	temp = set([i for i in xrange(num_docs)])
 	for i in xrange(num_docs):
 		for j in xrange(num_docs):
@@ -50,12 +51,17 @@ def compute_lambda(true_scores, predicted_scores):
 				if j in temp:
 					temp.remove(j)
 				z_ndcg = delta_ndcg(true_scores, i, j)
-
-				lambda_val = z_ndcg / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
+				rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
+				rho_complement = 1.0 - rho
+				lambda_val = z_ndcg * rho
 				lambdas[i] += lambda_val
 				lambdas[j] -= lambda_val
 
-	return lambdas[rev_indexes]
+				w_val = rho * rho * z_ndcg
+				w[i] += w_val
+				w[j] -= w_val
+
+	return lambdas[rev_indexes], w[rev_indexes]
 
 def group_queries(training_data):
 	query_indexes = {}
@@ -85,14 +91,15 @@ class LambdaMART:
 		query_indexes = group_queries(self.training_data)
 		for k in xrange(self.number_of_trees):
 			lambdas = np.zeros(len(predicted_scores))
+			w = np.zeros(len(predicted_scores))
 			# for i in xrange(len(self.training_data)):
 			for query in query_indexes:
 				indexes = query_indexes[query]
 				# print len(indexes)
 				# print len(self.training_data[indexes]), len(self.training_data[indexes][1])
 				# print self.training_data[0,1]
-				lambdas[indexes] = compute_lambda(self.training_data[indexes, 0], predicted_scores[indexes])
-			print lambdas
+				lambdas[indexes], w[indexes] = compute_lambda(self.training_data[indexes, 0], predicted_scores[indexes])
+			print w
 			exit()
 
 	# def predict(self, data):
