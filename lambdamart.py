@@ -4,6 +4,7 @@ import random
 import copy
 from sklearn.tree import DecisionTreeRegressor
 from multiprocessing import Pool
+from RegressionTree import RegressionTree
 
 def dcg(scores):
 	return np.sum([

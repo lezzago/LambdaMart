@@ -98,7 +98,7 @@ def create_leaf(label):
 	return leaf
 
 
-def create_tree(data, all_pos_split, label, current_depth = 0, max_depth = 5, ideal_ls = 100):
+def create_tree(data, all_pos_split, label, max_depth, ideal_ls, current_depth = 0):
 	
 	remaining_features = all_pos_split
 	#stopping conditions
@@ -134,8 +134,8 @@ def create_tree(data, all_pos_split, label, current_depth = 0, max_depth = 5, id
 		return create_leaf(right_label)
 
 	# recurse on children
-	left_tree = create_tree(left_data, remaining_features, left_label,  current_depth +1, max_depth , ideal_ls)
-	right_tree = create_tree(right_data, remaining_features, right_label,  current_depth +1, max_depth , ideal_ls)
+	left_tree = create_tree(left_data, remaining_features, left_label, max_depth, ideal_ls, current_depth +1)
+	right_tree = create_tree(right_data, remaining_features, right_label, max_depth, ideal_ls, current_depth +1)
 	return {'is_leaf'          : False, 
 			'value'       : None,
 			'splitting_feature': splitting_feature,
@@ -157,9 +157,30 @@ def make_prediction(tree, x, annotate = False):
 			return make_prediction(tree['left'], x, annotate)
 		else:
 			return make_prediction(tree['right'], x, annotate)	
-def output(tree, test):
-	prediction = [make_prediction(tree, x) for x in test]
-	return prediction
+
+class RegressionTree:
+	def __init__(self, training_data, labels, max_depth=5, ideal_ls=100):
+		self.training_data = training_data
+		self.labels = labels
+		self.max_depth = max_depth
+		self.ideal_ls = ideal_ls
+		self.tree = None
+
+	def fit(self):
+		all_pos_split = {}
+		pool = Pool()
+		splitting_data = [self.training_data.iloc[:,col].tolist() for col in xrange(self.training_data.shape[1])]
+		cols = [col for col in xrange(self.training_data.shape[1])]
+		for dat, col in pool.map(get_splitting_points, zip(splitting_data, cols)):
+			all_pos_split[col] = dat
+		pool.close()
+
+		self.tree = create_tree(self.training_data, all_pos_split, self.labels, self.max_depth, self.ideal_ls)
+
+
+	def predict(self, test):
+		prediction = [make_prediction(self.tree, x) for x in test]
+		return prediction
 
 if __name__ == '__main__':
 	#read in data, label
@@ -167,18 +188,22 @@ if __name__ == '__main__':
 	test = [[478, 184, 40, 74, 11, 31], [1000,10000,10000,10000,10000,1000,100000]]
 	label = data['X7']
 	del data['X7']
+
+	model = RegressionTree(data, label)
+	model.fit()
+	print model.predict(test)
 	
-	all_pos_split = {}
-	pool = Pool()
-	splitting_data = [data.iloc[:,col].tolist() for col in xrange(data.shape[1])]
-	cols = [col for col in xrange(data.shape[1])]
-	for dat, col in pool.map(get_splitting_points, zip(splitting_data, cols)):
-		all_pos_split[col] = dat
-	pool.close()
+	# all_pos_split = {}
+	# pool = Pool()
+	# splitting_data = [data.iloc[:,col].tolist() for col in xrange(data.shape[1])]
+	# cols = [col for col in xrange(data.shape[1])]
+	# for dat, col in pool.map(get_splitting_points, zip(splitting_data, cols)):
+	# 	all_pos_split[col] = dat
+	# pool.close()
 
-	# non parallel code
-	# for col in range(data.shape[1]):
-	# 	all_pos_split[col] = get_splitting_points(data.iloc[:,col].tolist())
+	# # non parallel code
+	# # for col in range(data.shape[1]):
+	# # 	all_pos_split[col] = get_splitting_points(data.iloc[:,col].tolist())
 
-	tree = create_tree(data, all_pos_split, label, current_depth = 0)
-	print output(tree, test)
+	# tree = create_tree(data, all_pos_split, label, current_depth = 0)
+	# print output(tree, test)
