@@ -27,6 +27,9 @@ def compare_arr(a, b):
 			return False
 	return True
 
+def single_dcg(scores, i, j):
+	return (np.power(2, true_scores[i]) - 1) / np.log2(j + 2)
+
 def delta_ndcg(scores, i, j, idcg):
 
 	dcg_val = dcg(scores)
@@ -74,6 +77,14 @@ def compute_lambda(args):
 	lambdas = np.zeros(num_docs)
 	w = np.zeros(num_docs)
 
+	single_dcgs = {}
+	for i,j in good_ij_pairs:
+		if (i,i) not in single_dcgs:
+			single_dcgs[(i,i)] = single_dcg(scores, i, i)
+		single_dcgs[(i,j)] = single_dcg(scores, i, j)
+		if (j,j) not in single_dcgs:
+			single_dcgs[(j,j)] = single_dcg(scores, j, j)
+		single_dcgs[(j,i)] = single_dcg(scores, j, i)
 	### parallel portion
 	# pool = Pool(processes=8)
 	# for i, j, lambda_val, w_val in pool.map(lambda_parallel, zip([true_scores for i in xrange(len(good_ij_pairs))], good_ij_pairs, [predicted_scores for i in xrange(len(good_ij_pairs))])):
@@ -84,7 +95,8 @@ def compute_lambda(args):
 	# pool.close()
 
 	for i,j in good_ij_pairs:
-		z_ndcg = delta_ndcg(true_scores, i, j, idcg)
+		# z_ndcg = delta_ndcg(true_scores, i, j, idcg)
+		z_ndcg = abs(single_dcgs[(i,j)] - single_dcgs[(i,i)] + single_dcgs[(j,i)] - single_dcgs[(j,j)]) / idcg
 		rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
 		rho_complement = 1.0 - rho
 		lambda_val = z_ndcg * rho
@@ -159,10 +171,10 @@ class LambdaMART:
 			# 	lambdas[query_indexes[query]], w[query_indexes[query]] = compute_lambda(true_scores[i], pred_scores[i], good_ij_pairs[i])
 
 			# sklearn tree			
-			# tree = DecisionTreeRegressor(max_depth=6)
-			# tree.fit(self.training_data[:,2:], lambdas)
-			# prediction = tree.predict(self.training_data[:,2:])
-			# predicted_scores += prediction * self.learning_rate
+			tree = DecisionTreeRegressor(max_depth=50)
+			tree.fit(self.training_data[:,2:], lambdas)
+			prediction = tree.predict(self.training_data[:,2:])
+			predicted_scores += prediction * self.learning_rate
 
 			###
 			# Tree code here, already calculated lambdas and ws
