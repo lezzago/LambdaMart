@@ -120,9 +120,10 @@ def create_tree(data, all_pos_split, label, max_depth, ideal_ls, current_depth =
 	remaining_features[splitting_feature[0]].remove(splitting_feature[1])
 	left_data, left_label, right_data, right_label = children
 
+	left_least_square = least_square(left_label)
 
 	# Create a leaf node if the split is "perfect"
-	if least_square(left_label) < ideal_ls:
+	if left_least_square < ideal_ls:
 		# print "current left ls: ", least_square(left_label), left_label
 		print current_depth
 		print "left stop because less than ls ."
@@ -147,7 +148,7 @@ def make_prediction(tree, x, annotate = False):
 	if tree['is_leaf']:
 		if annotate: 
 			print "At leaf, predicting %s" % tree['value']
-		return tree['index'], tree['value'] 
+		return tree['index']#, tree['value'] 
 	else:
 		# the splitting value of x.
 		split_feature_value = x[tree['splitting_feature'][0]]

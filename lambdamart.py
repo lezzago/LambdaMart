@@ -5,6 +5,8 @@ import copy
 from sklearn.tree import DecisionTreeRegressor
 from multiprocessing import Pool
 from RegressionTree import RegressionTree
+from essemble import essemble_trees
+import pandas as pd
 
 def dcg(scores):
 	return np.sum([
@@ -149,6 +151,10 @@ class LambdaMART:
 		query_keys = query_indexes.keys()
 		true_scores = [self.training_data[query_indexes[query], 0] for query in query_keys]
 		good_ij_pairs = get_pairs(true_scores)
+		tree_data = pd.DataFrame(self.training_data[:, 2:7])
+		labels = self.training_data[:, 0]
+
+
 
 		# ideal dcg calculation
 		idcg = [ideal_dcg(scores) for scores in true_scores]
@@ -172,10 +178,20 @@ class LambdaMART:
 			# 	lambdas[query_indexes[query]], w[query_indexes[query]] = compute_lambda(true_scores[i], pred_scores[i], good_ij_pairs[i])
 
 			# sklearn tree			
-			tree = DecisionTreeRegressor(max_depth=50)
-			tree.fit(self.training_data[:,2:], lambdas)
+			# tree = DecisionTreeRegressor(max_depth=50)
+			# tree.fit(self.training_data[:,2:], lambdas)
+			# prediction = tree.predict(self.training_data[:,2:])
+			# predicted_scores += prediction * self.learning_rate
+			tree = RegressionTree(tree_data, predicted_scores, max_depth=10, ideal_ls= 0.001)
+			print 'created tree'
+			tree.fit()
+			print 'fitted tree'
 			prediction = tree.predict(self.training_data[:,2:])
-			predicted_scores += prediction * self.learning_rate
+			print 'predicted tree'
+			print prediction
+			# exit()
+			predicted_scores = essemble_trees(lambdas, w, prediction, predicted_scores, self.learning_rate)
+			print 'updates scores'
 
 			###
 			# Tree code here, already calculated lambdas and ws
