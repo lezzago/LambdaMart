@@ -28,7 +28,7 @@ def compare_arr(a, b):
 	return True
 
 def single_dcg(scores, i, j):
-	return (np.power(2, true_scores[i]) - 1) / np.log2(j + 2)
+	return (np.power(2, scores[i]) - 1) / np.log2(j + 2)
 
 def delta_ndcg(scores, i, j, idcg):
 
@@ -80,11 +80,11 @@ def compute_lambda(args):
 	single_dcgs = {}
 	for i,j in good_ij_pairs:
 		if (i,i) not in single_dcgs:
-			single_dcgs[(i,i)] = single_dcg(scores, i, i)
-		single_dcgs[(i,j)] = single_dcg(scores, i, j)
+			single_dcgs[(i,i)] = single_dcg(true_scores, i, i)
+		single_dcgs[(i,j)] = single_dcg(true_scores, i, j)
 		if (j,j) not in single_dcgs:
-			single_dcgs[(j,j)] = single_dcg(scores, j, j)
-		single_dcgs[(j,i)] = single_dcg(scores, j, i)
+			single_dcgs[(j,j)] = single_dcg(true_scores, j, j)
+		single_dcgs[(j,i)] = single_dcg(true_scores, j, i)
 	### parallel portion
 	# pool = Pool(processes=8)
 	# for i, j, lambda_val, w_val in pool.map(lambda_parallel, zip([true_scores for i in xrange(len(good_ij_pairs))], good_ij_pairs, [predicted_scores for i in xrange(len(good_ij_pairs))])):
