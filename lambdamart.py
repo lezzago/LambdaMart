@@ -146,8 +146,8 @@ class LambdaMART:
 			w = np.zeros(len(predicted_scores))
 			pred_scores = [predicted_scores[query_indexes[query]] for query in query_keys]
 			
-			pool = Pool(processes=4)
-			for lambda_val, w_val, query_key in pool.map(compute_lambda, zip(true_scores, pred_scores, good_ij_pairs, idcg, query_keys)):
+			pool = Pool()
+			for lambda_val, w_val, query_key in pool.map(compute_lambda, zip(true_scores, pred_scores, good_ij_pairs, idcg, query_keys), chunksize=1):
 				indexes = query_indexes[query_key]
 				lambdas[indexes] = lambda_val
 				w[indexes] = w_val
