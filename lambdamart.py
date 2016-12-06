@@ -15,6 +15,10 @@ def dcg(scores):
 	# 	total += (np.power(2.0, scores[i - 1]) - 1.0) / np.log2(i + 1)
 	# return total
 
+def ideal_dcg(scores):
+	scores = [score for score in sorted(scores) if score > 0]
+	return dcg(scores)
+
 def compare_arr(a, b):
 	if len(a) != len(b):
 		return False
@@ -23,17 +27,17 @@ def compare_arr(a, b):
 			return False
 	return True
 
-def delta_ndcg(scores, i, j):
+def delta_ndcg(scores, i, j, idcg):
 
 	dcg_val = dcg(scores)
 	temp_scores = copy.deepcopy(scores)
 	temp_scores[i], temp_scores[j] = temp_scores[j], temp_scores[i]
 	new_dcg_val = dcg(temp_scores)
 
-	ideal_scores = [score for score in sorted(temp_scores) if score > 0]
+	# ideal_scores = [score for score in sorted(temp_scores) if score > 0]
 
-	ideal_dcg = dcg(ideal_scores)
-	return abs(dcg_val - new_dcg_val)/ideal_dcg
+	# ideal_dcg = dcg(ideal_scores)
+	return abs(dcg_val - new_dcg_val)/idcg
 
 # useless parallel code
 def lambda_parallel(args):
@@ -59,7 +63,7 @@ def lambda_parallel(args):
 
 #true_scores, predicted_scores
 def compute_lambda(args):
-	true_scores, predicted_scores, good_ij_pairs, query_key = args
+	true_scores, predicted_scores, good_ij_pairs, idcg, query_key = args
 	# true_scores, predicted_scores, good_ij_pairs = scores
 	num_docs = len(true_scores)
 	sorted_indexes = np.argsort(predicted_scores)[::-1]
@@ -80,7 +84,7 @@ def compute_lambda(args):
 	# pool.close()
 
 	for i,j in good_ij_pairs:
-		z_ndcg = delta_ndcg(true_scores, i, j)
+		z_ndcg = delta_ndcg(true_scores, i, j, idcg)
 		rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
 		rho_complement = 1.0 - rho
 		lambda_val = z_ndcg * rho
@@ -132,6 +136,10 @@ class LambdaMART:
 		query_keys = query_indexes.keys()
 		true_scores = [self.training_data[query_indexes[query], 0] for query in query_keys]
 		good_ij_pairs = get_pairs(true_scores)
+
+		# ideal dcg calculation
+		idcg = [ideal_dcg(scores) for scores in true_scores]
+
 		for k in xrange(self.number_of_trees):
 			print 'Tree %d' % (k)
 			lambdas = np.zeros(len(predicted_scores))
@@ -139,7 +147,7 @@ class LambdaMART:
 			pred_scores = [predicted_scores[query_indexes[query]] for query in query_keys]
 			
 			pool = Pool(processes=4)
-			for lambda_val, w_val, query_key in pool.map(compute_lambda, zip(true_scores, pred_scores, good_ij_pairs, query_keys)):
+			for lambda_val, w_val, query_key in pool.map(compute_lambda, zip(true_scores, pred_scores, good_ij_pairs, idcg, query_keys)):
 				indexes = query_indexes[query_key]
 				lambdas[indexes] = lambda_val
 				w[indexes] = w_val
