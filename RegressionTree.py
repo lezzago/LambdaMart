@@ -4,39 +4,68 @@
 
 import pandas as pd 
 import numpy as np 
+from multiprocessing import Pool
+from itertools import repeat
 
 node_id = 0
 
-def get_splitting_points(attribute):
+def get_splitting_points(args):
 	# given a list
 	# return a list of possible splitting values
+	attribute, col = args
 	attribute.sort()
 	possible_split = []
 	for i in range(len(attribute)-1):
 		if attribute[i] != attribute[i+1]:
 			possible_split.append(np.mean((attribute[i],attribute[i+1])))
-	return possible_split
+	return possible_split, col
 
 # create a dictionary, key is the attribute number, value is whole list of possible splits for that column
+def find_best_split_parallel(args):
+	best_ls = 1000000
+	best_split = None
+	best_children = None
+	split_point, data, label = args
+	key,possible_split = split_point
+	for split in possible_split:
+		children = split_children(data, label, key, split)
+
+		#weighted average of left and right ls
+		ls  = float(len(children[1]))/len(label)*least_square(children[1]) + float(len(children[3]))/len(label)*least_square(children[3])
+		if ls < best_ls:
+			best_ls = ls
+			best_split = (key, split)
+			best_children = children
+	return best_ls, best_split, best_children
 
 def find_best_split(data, label, split_points): 
 	# split_points is a dictionary of possible splitting values
 	# return the best split
 	best_ls = 1000000
 	best_split = None
-	for key,possible_split in split_points.items():
-		for split in possible_split:
-			children = split_children(data, label, key, split)
+	best_children = None
 
-			#weighted average of left and right ls
-			ls  = float(len(children[1]))/len(label)*least_square(children[1]) + float(len(children[3]))/len(label)*least_square(children[3])
-			if ls < best_ls:
-				best_ls = ls
-				best_split = (key, split)
+	pool = Pool()
+	for ls, split, children in pool.map(find_best_split_parallel, zip(split_points.items(), repeat(data), repeat(label))):
+		if ls < best_ls:
+			best_ls = ls
+			best_split = split
+			best_children = children
+	pool.close()
+	# non parallel code
+	# for key,possible_split in split_points.items():
+	# 	for split in possible_split:
+	# 		children = split_children(data, label, key, split)
+
+	# 		#weighted average of left and right ls
+	# 		ls  = float(len(children[1]))/len(label)*least_square(children[1]) + float(len(children[3]))/len(label)*least_square(children[3])
+	# 		if ls < best_ls:
+	# 			best_ls = ls
+	# 			best_split = (key, split)
 			
 
 
-	return best_split # return a tuple(attribute, value)
+	return best_split, best_children # return a tuple(attribute, value)
 
 def split_children(data, label, key, split):
 	left_index = [index for index in range(len(data.iloc[:,key])) if data.iloc[index,key] < split]
@@ -51,6 +80,8 @@ def split_children(data, label, key, split):
 def least_square(label):
 	# given the 
 	# return the
+	if not len(label):
+		return 0
 	label = np.array(label).astype(float)
 	return np.sum((label - np.mean(label))**2)
 
@@ -83,16 +114,11 @@ def create_tree(data, all_pos_split, label, current_depth = 0, max_depth = 5, id
 		return create_leaf(label)
 
 	# find splitting features    
-	splitting_feature = find_best_split(data, label, remaining_features)  #tuple(id, value)
+	splitting_feature, children = find_best_split(data, label, remaining_features)  #tuple(id, value)
 	# print "split feature: ", splitting_feature
 	# remove current features
 	remaining_features[splitting_feature[0]].remove(splitting_feature[1])
-	#split on the features we want
-	children = split_children(data, label, splitting_feature[0], splitting_feature[1])
-	left_data = children[0]
-	left_label =children[1]
-	right_data = children[2]
-	right_label = children[3]
+	left_data, left_label, right_data, right_label = children
 
 
 	# Create a leaf node if the split is "perfect"
@@ -141,12 +167,18 @@ if __name__ == '__main__':
 	test = [[478, 184, 40, 74, 11, 31], [1000,10000,10000,10000,10000,1000,100000]]
 	label = data['X7']
 	del data['X7']
-	node_id = 0
-	global node_id
 	
 	all_pos_split = {}
-	for col in range(data.shape[1]):
-		all_pos_split[col] = get_splitting_points(data.iloc[:,col].tolist())
+	pool = Pool()
+	splitting_data = [data.iloc[:,col].tolist() for col in xrange(data.shape[1])]
+	cols = [col for col in xrange(data.shape[1])]
+	for dat, col in pool.map(get_splitting_points, zip(splitting_data, cols)):
+		all_pos_split[col] = dat
+	pool.close()
+
+	# non parallel code
+	# for col in range(data.shape[1]):
+	# 	all_pos_split[col] = get_splitting_points(data.iloc[:,col].tolist())
 
 	tree = create_tree(data, all_pos_split, label, current_depth = 0)
 	print output(tree, test)
