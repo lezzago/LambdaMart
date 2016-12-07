@@ -22,5 +22,6 @@ training_data = get_data('/Users/madhavagrawal/Downloads/MQ2007/Fold1/train.txt'
 test_data = get_data('/Users/madhavagrawal/Downloads/MQ2007/Fold1/test.txt')
 model = LambdaMART(training_data, 500, 10, 0.001)
 model.fit()
-average_ndcg, predicted_scores = model.predict(test_data)
+model.save('lambdamart_model')
+average_ndcg, predicted_scores = model.validate(test_data)
 print average_ndcg

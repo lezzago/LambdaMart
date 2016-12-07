@@ -113,12 +113,12 @@ def compute_lambda(args):
 
 	return lambdas[rev_indexes], w[rev_indexes], query_key
 
-def group_queries(training_data):
+def group_queries(training_data, qid_index):
 	query_indexes = {}
 	index = 0
 	for record in training_data:
-		query_indexes.setdefault(record[1], [])
-		query_indexes[record[1]].append(index)
+		query_indexes.setdefault(record[qid_index], [])
+		query_indexes[record[qid_index]].append(index)
 		index += 1
 	return query_indexes
 
@@ -141,7 +141,7 @@ class LambdaMART:
 		The format for training data is as follows:
 			[relevance, q_id, [feature vector]]
 		'''
-		self.training_data = np.array(training_data)
+		self.training_data = training_data
 		self.number_of_trees = number_of_trees
 		self.leaves_per_tree = leaves_per_tree
 		self.learning_rate = learning_rate
@@ -149,7 +149,7 @@ class LambdaMART:
 
 	def fit(self):
 		predicted_scores = np.zeros(len(self.training_data))
-		query_indexes = group_queries(self.training_data)
+		query_indexes = group_queries(self.training_data, 1)
 		query_keys = query_indexes.keys()
 		true_scores = [self.training_data[query_indexes[query], 0] for query in query_keys]
 		good_ij_pairs = get_pairs(true_scores)
@@ -202,18 +202,31 @@ class LambdaMART:
 
 		# print predicted_scores
 
-
 	def predict(self, data):
 		data = np.array(data)
-		query_indexes = group_queries(data)
+		query_indexes = group_queries(data, 0)
+		predicted_scores = np.zeros(len(data))
+		for query in query_indexes:
+			results = np.zeros(len(query_indexes[query]))
+			for tree in self.trees:
+				results += self.learning_rate * tree.predict(data[query_indexes[query], 1:])
+			predicted_scores[query_indexes[query]] = results
+		return predicted_scores
+
+	def validate(self, data):
+		data = np.array(data)
+		query_indexes = group_queries(data, 1)
 		average_ndcg = 0
 		predicted_scores = np.zeros(len(data))
 		for query in query_indexes:
 			results = np.zeros(len(query_indexes[query]))
 			for tree in self.trees:
 				results += self.learning_rate * tree.predict(data[query_indexes[query], 2:])
+			predicted_sorted_indexes = np.argsort(results)
+			t_results = data[query_indexes[query], 0]
+			t_results = t_results[predicted_sorted_indexes]
 			predicted_scores[query_indexes[query]] = results
-			ndcg_val = (dcg(results) / ideal_dcg(results))
+			ndcg_val = (dcg(t_results) / ideal_dcg(t_results))
 			average_ndcg += ndcg_val
 		average_ndcg /= len(query_indexes)
 		return average_ndcg, predicted_scores
@@ -241,7 +254,8 @@ def main():
 		arr = line.split(' #')[0].split()
 		score = arr[0]
 		q_id = arr[1].split(':')[1]
-		new_arr.append(int(score))
+		if count < 200:
+			new_arr.append(int(score))
 		new_arr.append(int(q_id))
 		arr = arr[2:]
 		for el in arr:
@@ -252,13 +266,13 @@ def main():
 			test_data.append(new_arr)
 		count += 1
 	f.close()
-	model = LambdaMART(training_data, 20, 10, 0.001)
+	model = LambdaMART(np.array(training_data), 20, 10, 0.001)
 	model.fit()
 	model.save('temp')
 	t_model = LambdaMART()
 	t_model.load('temp.lmart')
-	average_ndcg, predicted_scores = t_model.predict(test_data)
-	print average_ndcg
+	predicted_scores = t_model.predict(test_data)
+	print predicted_scores
 
 
 
