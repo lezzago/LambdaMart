@@ -19,7 +19,7 @@ def dcg(scores):
 	# return total
 
 def ideal_dcg(scores):
-	scores = [score for score in sorted(scores) if score > 0]
+	scores = [score for score in sorted(scores)[::-1]]
 	return dcg(scores)
 
 def compare_arr(a, b):
@@ -144,6 +144,7 @@ class LambdaMART:
 		self.number_of_trees = number_of_trees
 		self.leaves_per_tree = leaves_per_tree
 		self.learning_rate = learning_rate
+		self.trees = []
 
 	def fit(self):
 		predicted_scores = np.zeros(len(self.training_data))
@@ -178,35 +179,51 @@ class LambdaMART:
 			# 	lambdas[query_indexes[query]], w[query_indexes[query]] = compute_lambda(true_scores[i], pred_scores[i], good_ij_pairs[i])
 
 			# sklearn tree			
-			# tree = DecisionTreeRegressor(max_depth=50)
-			# tree.fit(self.training_data[:,2:], lambdas)
-			# prediction = tree.predict(self.training_data[:,2:])
-			# predicted_scores += prediction * self.learning_rate
-			tree = RegressionTree(tree_data, predicted_scores, max_depth=10, ideal_ls= 0.001)
-			print 'created tree'
-			tree.fit()
-			print 'fitted tree'
+			tree = DecisionTreeRegressor(max_depth=50)
+			tree.fit(self.training_data[:,2:], lambdas)
+			self.trees.append(tree)
 			prediction = tree.predict(self.training_data[:,2:])
-			print 'predicted tree'
-			print prediction
-			# exit()
-			predicted_scores = essemble_trees(lambdas, w, prediction, predicted_scores, self.learning_rate)
-			print 'updates scores'
+			predicted_scores += prediction * self.learning_rate
+			# tree = RegressionTree(tree_data, lambdas, max_depth=10, ideal_ls= 0.001)
+			# print 'created tree'
+			# tree.fit()
+			# print 'fitted tree'
+			# prediction = tree.predict(self.training_data[:,2:])
+			# print 'predicted tree'
+			# print prediction
+			# # exit()
+			# predicted_scores = essemble_trees(lambdas, w, prediction, predicted_scores, self.learning_rate)
+			# print 'updates scores'
 
 			###
 			# Tree code here, already calculated lambdas and ws
 			###
 
-		print predicted_scores
-	# def predict(self, data):
+		# print predicted_scores
 
+
+	def predict(self, data):
+		data = np.array(data)
+		query_indexes = group_queries(data)
+		average_ndcg = 0
+		predicted_scores = np.zeros(len(data))
+		for query in query_indexes:
+			results = np.zeros(len(query_indexes[query]))
+			for tree in self.trees:
+				results += self.learning_rate * tree.predict(data[query_indexes[query], 2:])
+			predicted_scores[query_indexes[query]] = results
+			ndcg_val = (dcg(results) / ideal_dcg(results))
+			average_ndcg += ndcg_val
+		average_ndcg /= len(query_indexes)
+		return average_ndcg, predicted_scores
 
 def main():
 	f = open('vali.txt', 'r')
 	count = 0
 	training_data = []
+	test_data = []
 	for line in f:
-		if count > 200:
+		if count >= 240:
 			break
 		new_arr = []
 		arr = line.split(' #')[0].split()
@@ -217,11 +234,17 @@ def main():
 		arr = arr[2:]
 		for el in arr:
 			new_arr.append(float(el.split(':')[1]))
-		training_data.append(new_arr)
+		if count < 200:
+			training_data.append(new_arr)
+		else:
+			test_data.append(new_arr)
 		count += 1
 	f.close()
-	model = LambdaMART(training_data, 200, 10, 0.1)
+	model = LambdaMART(training_data, 500, 10, 0.001)
 	model.fit()
+	average_ndcg, predicted_scores = model.predict(test_data)
+
+
 
 
 if __name__ == '__main__':
