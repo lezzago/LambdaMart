@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from RegressionTree import RegressionTree
 from essemble import essemble_trees
 import pandas as pd
+import pickle
 
 def dcg(scores):
 	return np.sum([
@@ -135,7 +136,7 @@ def get_pairs(scores):
 
 class LambdaMART:
 
-	def __init__(self, training_data, number_of_trees, leaves_per_tree, learning_rate):
+	def __init__(self, training_data=None, number_of_trees=0, leaves_per_tree=0, learning_rate=0):
 		'''
 		The format for training data is as follows:
 			[relevance, q_id, [feature vector]]
@@ -217,6 +218,17 @@ class LambdaMART:
 		average_ndcg /= len(query_indexes)
 		return average_ndcg, predicted_scores
 
+	def save(self, fname):
+		pickle.dump(self, open('%s.lmart' % (fname), "w"), protocol=2)
+
+	def load(self, fname):
+		model = pickle.load(open(fname , "r"))
+		self.training_data = model.training_data
+		self.number_of_trees = model.number_of_trees
+		self.leaves_per_tree = model.leaves_per_tree
+		self.learning_rate = model.learning_rate
+		self.trees = model.trees
+
 def main():
 	f = open('vali.txt', 'r')
 	count = 0
@@ -240,9 +252,13 @@ def main():
 			test_data.append(new_arr)
 		count += 1
 	f.close()
-	model = LambdaMART(training_data, 500, 10, 0.001)
+	model = LambdaMART(training_data, 20, 10, 0.001)
 	model.fit()
-	average_ndcg, predicted_scores = model.predict(test_data)
+	model.save('temp')
+	t_model = LambdaMART()
+	t_model.load('temp.lmart')
+	average_ndcg, predicted_scores = t_model.predict(test_data)
+	print average_ndcg
 
 
 
