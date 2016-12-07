@@ -216,7 +216,7 @@ class LambdaMART:
 	def validate(self, data):
 		data = np.array(data)
 		query_indexes = group_queries(data, 1)
-		average_ndcg = 0
+		average_ndcg = []
 		predicted_scores = np.zeros(len(data))
 		for query in query_indexes:
 			results = np.zeros(len(query_indexes[query]))
@@ -226,9 +226,12 @@ class LambdaMART:
 			t_results = data[query_indexes[query], 0]
 			t_results = t_results[predicted_sorted_indexes]
 			predicted_scores[query_indexes[query]] = results
-			ndcg_val = (dcg(t_results) / ideal_dcg(t_results))
-			average_ndcg += ndcg_val
-		average_ndcg /= len(query_indexes)
+			dcg_val = dcg(t_results)
+			idcg_val = ideal_dcg(t_results)
+			ndcg_val = (dcg_val / idcg_val)
+			average_ndcg.append(ndcg_val)
+		average_ndcg = np.nanmean(average_ndcg)
+		# average_ndcg /= len(query_indexes)
 		return average_ndcg, predicted_scores
 
 	def save(self, fname):
@@ -254,8 +257,8 @@ def main():
 		arr = line.split(' #')[0].split()
 		score = arr[0]
 		q_id = arr[1].split(':')[1]
-		if count < 200:
-			new_arr.append(int(score))
+		# if count < 200:
+		new_arr.append(int(score))
 		new_arr.append(int(q_id))
 		arr = arr[2:]
 		for el in arr:
@@ -271,8 +274,8 @@ def main():
 	model.save('temp')
 	t_model = LambdaMART()
 	t_model.load('temp.lmart')
-	predicted_scores = t_model.predict(test_data)
-	print predicted_scores
+	average_ndcg, predicted_scores = t_model.validate(test_data)
+	print average_ndcg
 
 
 
