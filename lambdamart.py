@@ -222,7 +222,7 @@ class LambdaMART:
 			results = np.zeros(len(query_indexes[query]))
 			for tree in self.trees:
 				results += self.learning_rate * tree.predict(data[query_indexes[query], 2:])
-			predicted_sorted_indexes = np.argsort(results)
+			predicted_sorted_indexes = np.argsort(results)[::-1]
 			t_results = data[query_indexes[query], 0]
 			t_results = t_results[predicted_sorted_indexes]
 			predicted_scores[query_indexes[query]] = results
