@@ -14,6 +14,12 @@ def dcg(scores):
 						(np.power(2, scores[i]) - 1) / np.log2(i + 2)
 						for i in xrange(len(scores))
 					])
+
+def dcg_pred(scores):
+	return np.sum([
+						(np.power(2, scores[i]) - 1) / np.log2(i + 2)
+						for i in xrange(len(scores[:10]))
+					])
 	# total = 0
 	# for i in xrange(len(scores)):
 	# 	total += (np.power(2.0, scores[i - 1]) - 1.0) / np.log2(i + 1)
@@ -22,6 +28,11 @@ def dcg(scores):
 def ideal_dcg(scores):
 	scores = [score for score in sorted(scores)[::-1]]
 	return dcg(scores)
+
+def ideal_dcg_pred(scores):
+	scores = [score for score in sorted(scores)[::-1]]
+	return dcg_pred(scores)
+
 
 def compare_arr(a, b):
 	if len(a) != len(b):
