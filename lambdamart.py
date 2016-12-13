@@ -237,8 +237,8 @@ class LambdaMART:
 			t_results = data[query_indexes[query], 0]
 			t_results = t_results[predicted_sorted_indexes]
 			predicted_scores[query_indexes[query]] = results
-			dcg_val = dcg(t_results)
-			idcg_val = ideal_dcg(t_results)
+			dcg_val = dcg_pred(t_results)
+			idcg_val = ideal_dcg_pred(t_results)
 			ndcg_val = (dcg_val / idcg_val)
 			average_ndcg.append(ndcg_val)
 		average_ndcg = np.nanmean(average_ndcg)
