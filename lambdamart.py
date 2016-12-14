@@ -10,30 +10,116 @@ import pandas as pd
 import pickle
 
 def dcg(scores):
+	"""
+		Returns the DCG value of the list of scores.
+		Parameters
+		----------
+		scores : list
+			Contains labels in a certain ranked order
+		
+		Returns
+		-------
+		DCG_val: int
+			This is the value of the DCG on the given scores
+	"""
 	return np.sum([
 						(np.power(2, scores[i]) - 1) / np.log2(i + 2)
 						for i in xrange(len(scores))
 					])
 
-def dcg_pred(scores):
+def dcg_k(scores, k):
+	"""
+		Returns the DCG value of the list of scores and truncates to k values.
+		Parameters
+		----------
+		scores : list
+			Contains labels in a certain ranked order
+		k : int
+			In the amount of values you want to only look at for computing DCG
+		
+		Returns
+		-------
+		DCG_val: int
+			This is the value of the DCG on the given scores
+	"""
 	return np.sum([
 						(np.power(2, scores[i]) - 1) / np.log2(i + 2)
-						for i in xrange(len(scores[:10]))
+						for i in xrange(len(scores[:k]))
 					])
 
 def ideal_dcg(scores):
+	"""
+		Returns the Ideal DCG value of the list of scores.
+		Parameters
+		----------
+		scores : list
+			Contains labels in a certain ranked order
+		
+		Returns
+		-------
+		Ideal_DCG_val: int
+			This is the value of the Ideal DCG on the given scores
+	"""
 	scores = [score for score in sorted(scores)[::-1]]
 	return dcg(scores)
 
-def ideal_dcg_pred(scores):
+def ideal_dcg_k(scores, k):
+	"""
+		Returns the Ideal DCG value of the list of scores and truncates to k values.
+		Parameters
+		----------
+		scores : list
+			Contains labels in a certain ranked order
+		k : int
+			In the amount of values you want to only look at for computing DCG
+		
+		Returns
+		-------
+		Ideal_DCG_val: int
+			This is the value of the Ideal DCG on the given scores
+	"""
 	scores = [score for score in sorted(scores)[::-1]]
-	return dcg_pred(scores)
+	return dcg_k(scores, k)
 
 def single_dcg(scores, i, j):
+	"""
+		Returns the DCG value at a single point.
+		Parameters
+		----------
+		scores : list
+			Contains labels in a certain ranked order
+		i : int
+			This points to the ith value in scores
+		j : int
+			This sets the ith value in scores to be the jth rank
+		
+		Returns
+		-------
+		Single_DCG: int
+			This is the value of the DCG at a single point
+	"""
 	return (np.power(2, scores[i]) - 1) / np.log2(j + 2)
 
 #true_scores, predicted_scores
 def compute_lambda(args):
+	"""
+		Returns the DCG value at a single point.
+		Parameters
+		----------
+		args : zipped value of true_scores, predicted_scores, good_ij_pairs, idcg, query_key
+			Contains a list of the true labels of documents, list of the predicted labels of documents,
+			i and j pairs where true_score[i] > true_score[j], idcg values, and query keys.
+		
+		Returns
+		-------
+		lambdas : numpy array
+			This contains the calculated lambda values
+		w : numpy array
+			This contains the computed w values
+		query_key : int
+			This is the query id these values refer to
+	"""
+
 	true_scores, predicted_scores, good_ij_pairs, idcg, query_key = args
 	num_docs = len(true_scores)
 	sorted_indexes = np.argsort(predicted_scores)[::-1]
@@ -154,7 +240,7 @@ class LambdaMART:
 			predicted_scores[query_indexes[query]] = results
 		return predicted_scores
 
-	def validate(self, data):
+	def validate(self, data, k):
 		data = np.array(data)
 		query_indexes = group_queries(data, 1)
 		average_ndcg = []
@@ -167,12 +253,11 @@ class LambdaMART:
 			t_results = data[query_indexes[query], 0]
 			t_results = t_results[predicted_sorted_indexes]
 			predicted_scores[query_indexes[query]] = results
-			dcg_val = dcg_pred(t_results)
-			idcg_val = ideal_dcg_pred(t_results)
+			dcg_val = dcg_k(t_results, k)
+			idcg_val = ideal_dcg_k(t_results, k)
 			ndcg_val = (dcg_val / idcg_val)
 			average_ndcg.append(ndcg_val)
 		average_ndcg = np.nanmean(average_ndcg)
-		# average_ndcg /= len(query_indexes)
 		return average_ndcg, predicted_scores
 
 	def save(self, fname):
