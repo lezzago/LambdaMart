@@ -91,7 +91,7 @@ def get_pairs(scores):
 
 class LambdaMART:
 
-	def __init__(self, training_data=None, number_of_trees=0, learning_rate=0, tree_type='sklearn'):
+	def __init__(self, training_data=None, number_of_trees=5, learning_rate=0.1, tree_type='sklearn'):
 		'''
 		The format for training data is as follows:
 			[relevance, q_id, [feature vector]]
