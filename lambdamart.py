@@ -159,7 +159,7 @@ def group_queries(training_data, qid_index):
 		Parameters
 		----------
 		training_data : Numpy array of lists
-			Contains a list of document information. Each document’s format is [relevance score, query index, feature vector]
+			Contains a list of document information. Each document's format is [relevance score, query index, feature vector]
 		qid_index : int
 			This is the index where the qid is located in the training data
 		
@@ -214,9 +214,9 @@ class LambdaMART:
 			Number of trees LambdaMART goes through
 		learning_rate : float (default: 0.1)
 			Rate at which we update our prediction with each tree
-		tree_type : string (default: “sklearn”)
-			Either “sklearn” for using Sklearn implementation of the tree or “original” for using 
-			our implementation of the tree.
+		tree_type : string (default: "sklearn")
+			Either "sklearn" for using Sklearn implementation of the tree of "original" 
+			for using our implementation
 		"""
 
 		if tree_type != 'sklearn' and tree_type != 'original':
@@ -276,7 +276,7 @@ class LambdaMART:
 		Parameters
 		----------
 		data : Numpy array of documents
-			Numpy array of documents with each document’s format is [query index, feature vector]
+			Numpy array of documents with each document's format is [query index, feature vector]
 		
 		Returns
 		-------
@@ -299,7 +299,7 @@ class LambdaMART:
 		Parameters
 		----------
 		data : Numpy array of documents
-			Numpy array of documents with each document’s format is [relevance score, query index, feature vector]
+			Numpy array of documents with each document's format is [relevance score, query index, feature vector]
 		k : int
 			this is used to compute the NDCG@k
 		
@@ -331,25 +331,25 @@ class LambdaMART:
 
 	def save(self, fname):
 		"""
-		Saves the model into a “.lmart” file with the name given as a parameter.
+		Saves the model into a ".lmart" file with the name given as a parameter.
 		Parameters
 		----------
 		fname : string
 			Filename of the file you want to save
 		
 		"""
-		pickle.dump(self, open('%s.lmart' % (fname), "w"), protocol=2)
+		pickle.dump(self, open('%s.lmart' % (fname), "wb"), protocol=2)
 
 	def load(self, fname):
 		"""
-		Loads the model from the “.lmart” file given as a parameter.
+		Loads the model from the ".lmart" file given as a parameter.
 		Parameters
 		----------
 		fname : string
 			Filename of the file you want to load
 		
 		"""
-		model = pickle.load(open(fname , "r"))
+		model = pickle.load(open(fname , "rb"))
 		self.training_data = model.training_data
 		self.number_of_trees = model.number_of_trees
 		self.tree_type = model.tree_type
