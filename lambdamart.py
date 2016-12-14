@@ -20,10 +20,6 @@ def dcg_pred(scores):
 						(np.power(2, scores[i]) - 1) / np.log2(i + 2)
 						for i in xrange(len(scores[:10]))
 					])
-	# total = 0
-	# for i in xrange(len(scores)):
-	# 	total += (np.power(2.0, scores[i - 1]) - 1.0) / np.log2(i + 1)
-	# return total
 
 def ideal_dcg(scores):
 	scores = [score for score in sorted(scores)[::-1]]
@@ -33,56 +29,12 @@ def ideal_dcg_pred(scores):
 	scores = [score for score in sorted(scores)[::-1]]
 	return dcg_pred(scores)
 
-
-def compare_arr(a, b):
-	if len(a) != len(b):
-		return False
-	for i in xrange(len(a)):
-		if a[i] != b[i]:
-			return False
-	return True
-
 def single_dcg(scores, i, j):
 	return (np.power(2, scores[i]) - 1) / np.log2(j + 2)
-
-def delta_ndcg(scores, i, j, idcg):
-
-	dcg_val = dcg(scores)
-	temp_scores = copy.deepcopy(scores)
-	temp_scores[i], temp_scores[j] = temp_scores[j], temp_scores[i]
-	new_dcg_val = dcg(temp_scores)
-
-	# ideal_scores = [score for score in sorted(temp_scores) if score > 0]
-
-	# ideal_dcg = dcg(ideal_scores)
-	return abs(dcg_val - new_dcg_val)/idcg
-
-# useless parallel code
-def lambda_parallel(args):
-	true_scores, good_ij_pairs, predicted_scores = args
-	# print scores
-	# exit()
-
-	# true_scores, predicted_scores = scores
-	i, j = good_ij_pairs
-	z_ndcg = delta_ndcg(true_scores, i, j)
-	rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
-	rho_complement = 1.0 - rho
-	lambda_val = z_ndcg * rho
-	# lambdas = []
-	# lambdas.append(lambda_val)
-	# lambdas.append(-lambda_val)
-	# w = []
-	w_val = rho * rho_complement * z_ndcg
-	# w.append(w_val)
-	# w.append(w_val)
-	return i, j, lambda_val, w_val
-
 
 #true_scores, predicted_scores
 def compute_lambda(args):
 	true_scores, predicted_scores, good_ij_pairs, idcg, query_key = args
-	# true_scores, predicted_scores, good_ij_pairs = scores
 	num_docs = len(true_scores)
 	sorted_indexes = np.argsort(predicted_scores)[::-1]
 	rev_indexes = np.argsort(sorted_indexes)
@@ -100,17 +52,9 @@ def compute_lambda(args):
 		if (j,j) not in single_dcgs:
 			single_dcgs[(j,j)] = single_dcg(true_scores, j, j)
 		single_dcgs[(j,i)] = single_dcg(true_scores, j, i)
-	### parallel portion
-	# pool = Pool(processes=8)
-	# for i, j, lambda_val, w_val in pool.map(lambda_parallel, zip([true_scores for i in xrange(len(good_ij_pairs))], good_ij_pairs, [predicted_scores for i in xrange(len(good_ij_pairs))])):
-	# 	lambdas[i] += lambda_val
-	# 	lambdas[j] -= lambda_val
-	# 	w[i] += w_val
-	# 	w[j] += w_val
-	# pool.close()
+
 
 	for i,j in good_ij_pairs:
-		# z_ndcg = delta_ndcg(true_scores, i, j, idcg)
 		z_ndcg = abs(single_dcgs[(i,j)] - single_dcgs[(i,i)] + single_dcgs[(j,i)] - single_dcgs[(j,j)]) / idcg
 		rho = 1 / (1 + np.exp(predicted_scores[i] - predicted_scores[j]))
 		rho_complement = 1.0 - rho
@@ -147,16 +91,18 @@ def get_pairs(scores):
 
 class LambdaMART:
 
-	def __init__(self, training_data=None, number_of_trees=0, leaves_per_tree=0, learning_rate=0):
+	def __init__(self, training_data=None, number_of_trees=0, learning_rate=0, tree_type='sklearn'):
 		'''
 		The format for training data is as follows:
 			[relevance, q_id, [feature vector]]
 		'''
+		if tree_type != 'sklearn' and tree_type != 'original':
+			raise ValueError('The "tree_type" must be "sklearn" or "original"')
 		self.training_data = training_data
 		self.number_of_trees = number_of_trees
-		self.leaves_per_tree = leaves_per_tree
 		self.learning_rate = learning_rate
 		self.trees = []
+		self.tree_type = tree_type
 
 	def fit(self):
 		predicted_scores = np.zeros(len(self.training_data))
@@ -166,8 +112,6 @@ class LambdaMART:
 		good_ij_pairs = get_pairs(true_scores)
 		tree_data = pd.DataFrame(self.training_data[:, 2:7])
 		labels = self.training_data[:, 0]
-
-
 
 		# ideal dcg calculation
 		idcg = [ideal_dcg(scores) for scores in true_scores]
@@ -185,33 +129,19 @@ class LambdaMART:
 				w[indexes] = w_val
 			pool.close()
 
-			## non parallel
-			# for i in xrange(len(true_scores)):
-			# 	query = query_keys[i]
-			# 	lambdas[query_indexes[query]], w[query_indexes[query]] = compute_lambda(true_scores[i], pred_scores[i], good_ij_pairs[i])
-
-			# sklearn tree			
-			tree = DecisionTreeRegressor(max_depth=50)
-			tree.fit(self.training_data[:,2:], lambdas)
-			self.trees.append(tree)
-			prediction = tree.predict(self.training_data[:,2:])
-			predicted_scores += prediction * self.learning_rate
-			# tree = RegressionTree(tree_data, lambdas, max_depth=10, ideal_ls= 0.001)
-			# print 'created tree'
-			# tree.fit()
-			# print 'fitted tree'
-			# prediction = tree.predict(self.training_data[:,2:])
-			# print 'predicted tree'
-			# print prediction
-			# # exit()
-			# predicted_scores = essemble_trees(lambdas, w, prediction, predicted_scores, self.learning_rate)
-			# print 'updates scores'
-
-			###
-			# Tree code here, already calculated lambdas and ws
-			###
-
-		# print predicted_scores
+			if self.tree_type == 'sklearn':
+				# Sklearn implementation of the tree			
+				tree = DecisionTreeRegressor(max_depth=50)
+				tree.fit(self.training_data[:,2:], lambdas)
+				self.trees.append(tree)
+				prediction = tree.predict(self.training_data[:,2:])
+				predicted_scores += prediction * self.learning_rate
+			elif self.tree_type == 'original':
+				# Our implementation of the tree
+				tree = RegressionTree(tree_data, lambdas, max_depth=10, ideal_ls= 0.001)
+				tree.fit()
+				prediction = tree.predict(self.training_data[:,2:])
+				predicted_scores += prediction * self.learning_rate
 
 	def predict(self, data):
 		data = np.array(data)
@@ -252,44 +182,6 @@ class LambdaMART:
 		model = pickle.load(open(fname , "r"))
 		self.training_data = model.training_data
 		self.number_of_trees = model.number_of_trees
-		self.leaves_per_tree = model.leaves_per_tree
+		self.tree_type = model.tree_type
 		self.learning_rate = model.learning_rate
 		self.trees = model.trees
-
-def main():
-	f = open('vali.txt', 'r')
-	count = 0
-	training_data = []
-	test_data = []
-	for line in f:
-		if count >= 240:
-			break
-		new_arr = []
-		arr = line.split(' #')[0].split()
-		score = arr[0]
-		q_id = arr[1].split(':')[1]
-		# if count < 200:
-		new_arr.append(int(score))
-		new_arr.append(int(q_id))
-		arr = arr[2:]
-		for el in arr:
-			new_arr.append(float(el.split(':')[1]))
-		if count < 200:
-			training_data.append(new_arr)
-		else:
-			test_data.append(new_arr)
-		count += 1
-	f.close()
-	model = LambdaMART(np.array(training_data), 20, 10, 0.001)
-	model.fit()
-	model.save('temp')
-	t_model = LambdaMART()
-	t_model.load('temp.lmart')
-	average_ndcg, predicted_scores = t_model.validate(test_data)
-	print average_ndcg
-
-
-
-
-if __name__ == '__main__':
-	main()
