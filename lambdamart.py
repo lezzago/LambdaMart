@@ -5,7 +5,6 @@ import copy
 from sklearn.tree import DecisionTreeRegressor
 from multiprocessing import Pool
 from RegressionTree import RegressionTree
-from essemble import essemble_trees
 import pandas as pd
 import pickle
 
