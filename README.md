@@ -36,7 +36,8 @@ Methods:
 		Returns: None
 
 
-Tutorial:
+#Tutorial:
+
 To start using the API, you need to include the files: “lambdamart.py” and “RegressionTree.py” in the same directory.
 Create a Python file in the same directory as the other Python files and for the sake of this tutorial, call it “example.py”. To run this example, you will need a training dataset and a test dataset. You can download the training dataset here https://github.com/lezzago/LambdaMart/blob/master/example_data/train.txt: and the test dataset here: https://github.com/lezzago/LambdaMart/blob/master/example_data/test.txt.
 
