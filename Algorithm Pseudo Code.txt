@@ -1,0 +1,139 @@
+Algorithm Pseudo Code
+
+
+The main part is in the regression tree python file and there are 2 separate parts in the regression tree part.
+Part 1: Build a tree 
+Part 2: Predict the data based on the current tree model and validate it
+ 
+1 Regression Tree Model
+
+
+Function get_slittting_points
+Iterate through the attribute value of the parameter.
+Sort the attribute value array in ascending order.
+For index from 0 until array.length-1 
+	if(array[index) not equals array[index+1]
+		Add median value to the array
+Return the array.
+
+
+Function find_best_split_parallel
+	Best_least_square = infinity
+For i in all possible splits
+Children = split_children(data, i,)
+Least_square = least_square(left) + least_square(right)
+If  Least_square < Best_least_square
+	Best_least_square = Least_square
+	Assign best_children 
+	Assign best_split_point
+
+
+Function split_children
+Left_index = all indexes which value is <split
+Right_index = all indexes which value is >=split
+Left_label = all labels which index is contained in Left_index
+Right_Label = all labels which index is contained in right index
+Return Left_index, Right_index, Left_label, Right_label 
+
+
+
+
+Function create tree(data, all_pos_split, max_depth, curr_depth, ideal_ls)
+// checking two stopping conditions
+All_features = all_pos_split
+Condition1
+sum(all features) is 0 ,
+Ending because there is no more features
+Condition2
+End when curr_depth > max_depth
+For j in all_pos_split
+	Get min_split which creates min_error
+Children = split_children(min_split)
+// make the recursive functions call on create_tree
+create_tree(children.left_data…)
+create_tree(children.right_data…)
+
+
+
+
+Function make prediction(curr_node, data)
+	// base case here
+	If curr_node is leaf
+		Return its prediction
+Get the attribute value from the data
+	If attribute_value < split_vaule
+		Choose left path
+	Else
+		Choose right path
+
+
+
+
+2. Using tree model to build Lambdamart  model.
+Lambdamart python file
+
+
+Function dcg(scores)
+Pass an array as parameter,
+Iterate each entry of the array,  get the value of 2 to the power of entry value, divide by the log likelihood of number of index.
+Add all values together return it.
+
+
+Function dcg_pred(scores)
+Temp_a = np.power(2, scores[i]-1/ np.log(i+2) for the top 10 values and add them up
+
+
+Function dcg_pred(scores, i, g, idcg)
+// calculate the percentage we could improve by swapping 2 values
+//idcg is the ideal dcg value here
+Swap the values of index i and j in the array.
+Old_Dcg =dcg(scores) without swapping
+New_Dcg = dcg(scores) after applying swapping
+Return (new_dcg- old_dcg)/idcg
+
+
+Function single_dcg(scores, i, j)
+	For 2 different index i and j of scores array.
+Return (np.power(2, scores[i]) - 1) / np.log2(j + 2)
+
+
+Function lambda_parallel(args) which args include 
+Calculate the delta_ndcg according to the passed array and i, j index
+Then calculate the lambda value based on the delta_ndcg
+
+
+Function compute_lamda(args): 
+Core function
+Based on the passed parameter true scores, predicted scores, 
+First using numpy argsort to retrieve the corresponding index of the sorted array of both true value and our predicted value.
+For all the i,j pairs  in good_ij_pairs
+Calculate  single_dcg for each pair and assign key with (i,j) and single_dcg(i,j) as the value, store the pair in the dictionary.
+For all the i,j pairs in good_ij_pairs
+	Calculate lambda value based on the difference between i,j index and z_ndcg value of (i,i) and (i,j)
+
+
+Function constructor of class LambdaMart
+LambdaMart has its own training data, its own defined number of trees, leaves per tree and its learning rate.
+
+
+Function  predict
+Iterate through each query indexes 
+Use the regression  tree predict function to predict the training data of each entry 
+Add the predicted value together and assign it to the predicted scores which we return from the function
+
+
+Function validate
+Predict the testing data based on the tree build from training data 
+
+
+Function save and load
+Save the Lambdamart model in the file by dumping it and load it every time 
+
+
+Main function
+Read our training data from the file 
+Build the Lambdamart based on training data and learning rate by calling the constructor
+Calculate the average dcg score by validating  the testing data.
+
+
+3. Implementation Challenge 
